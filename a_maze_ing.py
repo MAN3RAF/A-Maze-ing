@@ -1,63 +1,69 @@
 from mazegen.generate import MazeGenerator
 from mazegen.display import ShowMaze
-from mazegen.solve import switch_path, breadth_first_search
+from mazegen.solve import switch_path
 import curses
 import sys
 import os
-from mazegen.parsing import parsing, ParsingError
+from mazegen.parsing import parsing, ParsingError, ParsingResult
 
 
-def be_amazed(screen: curses.window) -> None:
+def be_amazed(screen: curses.window, config: ParsingResult) -> None:
     """
     Manage the initialisation of the maze, displayer, and user inputs
-    
-    :param screen: The screen given by the cursus.wrapper()
-    it is on this window that we will draw the maze
 
-    :type screen: curses.window
+    Args:
+        screen (curses.window): The screen given by the cursus.wrapper().
+                                The maze will be drawn there
+        config (ParsingResult):
     """
 
-    config = parsing(sys.argv[1])     # config dict
+    curses.curs_set(0)
+    # initialise the displayer and the maze generator.
 
-    # initialise the displayer, the maze and then initialise the maze inside the displayer
     display = ShowMaze(screen, config.get('seed'))
     maze = MazeGenerator(config['width'], config['height'],
                          config['entry'], config['exit'],
                          config.get('seed'), display)
-    display.init_maze(maze)
 
-    # display the maze and save it's seed inside the seed variable
-    maze.backtracking(config['perfect'], True)
+    # generate and display the maze
+    maze.apply_algo(config['perfect'], True, True)
 
-    # get the shortest path
-    path = breadth_first_search(maze)
+    # save the maze to the file given by the user
+    maze.save_maze(config['output_file'])
 
     while True:
-        display.user_option()
+        maze.user_option()
         user_input = screen.getch()
 
-        if user_input == ord('g'):    # static
-            switch_path(path, display, animate=False, visible=False)    # clear path
-            maze.init_maze()
-            maze.prims(config['perfect'])
-            path = breadth_first_search(maze)
+        # switch algo
+        if user_input == curses.KEY_UP:
+            maze.switch_algo(-1)
+        elif user_input == curses.KEY_DOWN:
+            maze.switch_algo(1)
 
-        elif user_input == ord('a'):    # animated
-            switch_path(path, display, animate=False, visible=False)    # clear path
-            maze.init_maze()
-            maze.prims(config['perfect'], True)
-            path = breadth_first_search(maze)
+        elif user_input == ord('g'):    # static generation
+            # clear path
+            switch_path(maze.path, maze, animate=False, visible=False)
+            maze.apply_algo(config['perfect'], True)
+            maze.save_maze(config['output_file'])
 
-        elif user_input == ord('c'):    # color
-            display.switch_colors()
-            display.display_grid()
+        elif user_input == ord('a'):    # animated generation
+            # clear path
+            switch_path(maze.path, maze, animate=False, visible=False)
+            maze.displayer.display_grid(maze)
+            maze.apply_algo(config['perfect'], True, True)
+            maze.save_maze(config['output_file'])
 
-        elif user_input == ord('f'):    # mid
-            display.switch_colors('mid')
-            display.display_grid()
+        elif user_input == ord('c'):    # change color
+            maze.displayer.switch_colors()
+            maze.displayer.display_grid(maze)
 
-        elif user_input == ord('p'):    # solve with BFS
-            switch_path(path, display, animate=True)    # clear path
+        elif user_input == ord('f'):    # change mid color
+            maze.displayer.switch_colors('mid')
+            maze.displayer.display_grid(maze)
+
+        elif user_input == ord('p'):    # show/hide path
+            switch_path(maze.path, maze, animate=True)
 
         elif user_input == ord('s'):    # save
             maze.save_seed()
@@ -67,9 +73,10 @@ def be_amazed(screen: curses.window) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 2:    # Check the presence of 1 argument (filename)
         try:
-            curses.wrapper(be_amazed)
+            config = parsing(sys.argv[1])    # config = parsed user input
+            curses.wrapper(be_amazed, config)
         except KeyboardInterrupt:
             os.system('cls' if os.name == 'nt' else 'clear')
             print("Leaving already?")
@@ -77,7 +84,7 @@ if __name__ == "__main__":
         except curses.error:
             os.system('cls' if os.name == 'nt' else 'clear')
             print("This window is way too small for this size")
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             print("No config file, No run!")
         except (ParsingError, ValueError) as e:
             print(e)

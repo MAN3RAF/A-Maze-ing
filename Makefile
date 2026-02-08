@@ -1,4 +1,4 @@
-VENV = venv
+VENV = .venv
 
 PYTHON = $(VENV)/bin/python3
 
@@ -15,32 +15,43 @@ install:
 	$(PIP) install mypy
 	$(PIP) install flake8
 	$(PIP) install pytest
+	$(PYTHON) -m pip install --upgrade build
 
 
-run:
+$(VENV):
+	@if [ ! -d $(VENV) ]; then \
+		make install; \
+	fi
+
+
+run: $(VENV)
 	$(PYTHON) $(NAME) $(CONFIG)
 
 
-debug:
-	$(PYTHON) -m pdb $(NAME)
+debug: $(VENV)
+	$(PYTHON) -m pdb $(NAME) $(CONFIG)
 
 
-lint:
-	$(PYTHON) -m flake8 *.py || true
-	$(PYTHON) -m mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs || true
+lint: $(VENV)
+	$(PYTHON) -m flake8 . --exclude $(VENV)
+	$(PYTHON) -m mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 
-lint-strict:
-	$(PYTHON) -m flake8 *.py || true
-	$(PYTHON) -m mypy . --strict || true
+lint-strict: $(VENV)
+	$(PYTHON) -m flake8 . --exclude $(VENV)
+	$(PYTHON) -m mypy . --strict
 
 
 clean:
-	rm -rf .mypy_cache
-	rm -rf .pytest_cache
+	rm -rf .mypy_cache .pytest_cache
+	rm -rf seed.txt output.txt
 	rm -rf $(VENV)
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -delete
 
 
-.PHONY:	install run debug clean lint lint-strict 
+build: $(VENV)
+	$(PYTHON) -m build
+
+
+.PHONY:	install run debug clean lint lint-strict
