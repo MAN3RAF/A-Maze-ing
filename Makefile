@@ -44,11 +44,10 @@ lint-strict: $(VENV)
 
 clean:
 	rm -rf .mypy_cache .pytest_cache
-	rm -rf seed.txt output.txt
 	rm -rf $(VENV)
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -delete
-
+	find . -maxdepth 1 -name "*.txt" ! -name "config.txt" -delete
 
 build: $(VENV)
 	$(PYTHON) -m build

@@ -109,6 +109,11 @@ def switch_path(path: list[Cell], maze: Any,
                 cell.path = True
         else:
             cell.path = visible
-        if animate and maze.displayer:
+    if animate and maze.displayer:
+        for cell in path:
             maze.displayer.update_cell(cell, maze)
             time.sleep(0.01)
+        maze.displayer.update_cell(maze.grid[maze.end[1]]
+                                   [maze.end[0]], maze)
+        maze.displayer.update_cell(maze.grid[maze.start[1]]
+                                   [maze.start[0]], maze)

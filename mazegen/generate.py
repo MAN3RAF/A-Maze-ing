@@ -12,8 +12,8 @@ class MazeGenerator:
     Args:
         width (int): Maze width
         height (int): Maze height
-        start (tuple[int, int]): Maze entrance (for path)
-        end (tuple[int, int]): = Maze exit (for path)
+        start (list[int, int]): Maze entrance (for path)
+        end (list[int, int]): = Maze exit (for path)
         seed (Optional[int]): Maze seed, if None generate random one
         algo (int): Generation algorithm to use
         self.displayer (Optional[Any]): Class to display the maze
@@ -68,6 +68,7 @@ class MazeGenerator:
 
         self.displayer: Any = displayer
         self.path: list[Cell] = []
+        self.path_visible: bool = False
         self.init_maze()
 
     def init_maze(self) -> None:
@@ -89,6 +90,60 @@ class MazeGenerator:
         if self.grid[self.end[1]][self.end[0]].reserved:
             raise ValueError("The exit is reserved by the 42 pattern, "
                              "change it's position pls")
+
+    def move_entry(self, x: int, y: int) -> None:
+        """
+        You can now move the entry like a player!
+
+        Args:
+            x (int): How much the cell moved horizontally
+            y (int): How much the cell moved vertically
+        """
+        # Store the player based on coordinates
+        player: Cell = self.grid[self.start[1]][self.start[0]]
+
+        # Verify the x movement
+        if ((x == 1 and not player.walls['east'])
+                or (x == -1 and not player.walls['west'])):
+            self.start = (self.start[0] + x, self.start[1])
+
+        # Verify the y movement
+        elif ((y == 1 and not player.walls['south'])
+                or (y == -1 and not player.walls['north'])):
+            self.start = (self.start[0], self.start[1] + y)
+
+        # Update the grid when position changed
+        if player.x != self.start[0] or player.y != self.start[1]:
+            # if player moved in a path cell no need to redo BFS
+            if self.grid[self.start[1]][self.start[0]].path:
+                # Store the old path
+                last_path = self.path
+                self.path = self.path[1:]
+            else:
+                last_path = self.path
+                # Apply bfs another time to refresh the shortest path
+                self.path = breadth_first_search(self)
+
+            # Set all cells in old path that are not in new path to False
+            new_path = set(self.path)
+            for cell in last_path:
+                if cell not in new_path:
+                    cell.path = False
+                    self.displayer.update_cell(cell, self)
+
+            # Set all cells in new path as the actual path visibility
+            for cell in self.path:
+                cell.path = self.path_visible
+
+            # If path is visible refresh the display of it
+            if self.path_visible:
+                for cell in self.path:
+                    self.displayer.update_cell(cell, self)
+
+            # Update the past player cell and player cell
+            self.displayer.update_cell(player, self)
+            self.displayer.update_cell(self.grid[player.y + y][player.x + x],
+                                       self)
 
     def switch_algo(self, direction: int) -> None:
         """
@@ -270,7 +325,7 @@ class MazeGenerator:
     def backtracking(self, perfect: bool, displaying: bool = False,
                      animate: bool = False) -> None:
         """
-        Backtracking implementation
+        Docstring for prims
 
         perfect (bool): True make the maze perfect, otherwise,
                         call self.unperfect() after maze generation.
@@ -303,7 +358,7 @@ class MazeGenerator:
     def prims(self, perfect: bool, displaying: bool = False,
               animate: bool = False) -> None:
         """
-        Prim's implementation
+        Docstring for prims
 
         perfect (bool): True make the maze perfect, otherwise,
                         call self.unperfect() after maze generation.
@@ -342,7 +397,7 @@ class MazeGenerator:
     def kruskal(self, perfect: bool, displaying: bool = False,
                 animate: bool = False) -> None:
         """
-        Kruskal implementation
+        Docstring for prims
 
         perfect (bool): True make the maze perfect, otherwise,
                         call self.unperfect() after maze generation.
@@ -361,8 +416,9 @@ class MazeGenerator:
             actual = random.choice(list(
                 sorted(
                     my_set,
-                    key=lambda x: (x.x, x.y))
+                    key=lambda x: (len(x.neighbours), x.x, x.y)
                 )
+            )
             )
             # available cells
             unvisited = [cell for cell in actual.neighbours

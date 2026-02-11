@@ -78,11 +78,20 @@ class ShowMaze:
                     'exit': c6
                     }
                     )
+                # base colors
                 curses.init_pair(1, c1, c2)
                 curses.init_pair(2, c1, c3)
                 curses.init_pair(3, c1, c4)
                 curses.init_pair(4, c1, c5)
                 curses.init_pair(5, c1, c6)
+
+                # additionnal edge cases colors
+                curses.init_pair(6, c1, -1)
+                curses.init_pair(7, c2, c5)
+                curses.init_pair(8, c2, c6)
+                curses.init_pair(9, c2, c4)
+                curses.init_pair(11, c4, c6)
+                curses.init_pair(10, c4, c5)
                 return
             available = list(set(self.color_palet) - set(self.colors.values()))
 
@@ -91,17 +100,26 @@ class ShowMaze:
                 curses.init_pair(2, self.colors['walls'],
                                  self.colors['mid_back'])
             else:
-                c1, c2, c3, c4, c5 = random.sample(available, 5)
+                c1, c2, c4, c5, c6 = random.sample(available, 5)
                 self.colors['walls'] = c1
                 self.colors['maze_back'] = c2
-                self.colors['path_back'] = c3
-                self.colors['entry'] = c4
-                self.colors['exit'] = c5
+                self.colors['path_back'] = c4
+                self.colors['entry'] = c5
+                self.colors['exit'] = c6
+                # base colors
                 curses.init_pair(1, c1, c2)
                 curses.init_pair(2, c1, self.colors['mid_back'])
                 curses.init_pair(3, c1, self.colors['path_back'])
                 curses.init_pair(4, c1, self.colors['entry'])
                 curses.init_pair(5, c1, self.colors['exit'])
+
+                # additionnal edge case colors
+                curses.init_pair(6, c1, -1)
+                curses.init_pair(7, c2, c5)
+                curses.init_pair(8, c2, c6)
+                curses.init_pair(9, c2, c4)
+                curses.init_pair(11, c4, c6)
+                curses.init_pair(10, c4, c5)
                 return
 
     def __init__(self, screen: curses.window,
@@ -123,6 +141,8 @@ class ShowMaze:
     def user_option(self, maze: MazeGenerator) -> None:
         """Print the interactive help legend under the rendered maze."""
         self.screen.move(maze.height * 2 + 1, 0)
+        self.screen.addstr("\nchoose the algo then use "
+                           "'g' or 'a' to generate\n\n")
         if maze.algo == 0:
             self.screen.addstr("1: Backtracking algorithm   <---\n")
             self.screen.addstr("2: Prim's algorithm\n")
@@ -134,8 +154,13 @@ class ShowMaze:
         elif maze.algo == 2:
             self.screen.addstr("1: Backtracking algorithm\n")
             self.screen.addstr("2: Prim's algorithm\n")
-            self.screen.addstr("3: kruskal algrotithm        <---\n")
-        self.screen.move(maze.height * 2 + 5, 0)
+            self.screen.addstr("3: kruskal algrotithm       <---\n")
+
+        self.screen.move(maze.height * 2 + 8, 0)
+        self.screen.addstr("↑: move up\n")
+        self.screen.addstr("↓: move down\n")
+        self.screen.addstr("←: move left\n")
+        self.screen.addstr("→: move right\n")
         self.screen.addstr("g: static maze generation\n")
         self.screen.addstr("a: animated maze generation\n")
         self.screen.addstr("c: change maze color\n")
@@ -166,58 +191,147 @@ class ShowMaze:
         maze (MazeGenerator): The maze (for entry, exit, size etc..)
         animate (bool): Whether to refresh screen immediately
         """
+        # Condition to display a little block on top
+        corner = False
+        if (cell.walls['north'] or
+                any((n.x == cell.x - 1 and n.walls['north']) or
+                    (n.y == cell.y - 1 and n.walls['west'])
+                    for n in cell.neighbours)):
+            corner = True
+
+        if cell == maze.grid[maze.start[1]][maze.start[0]]:
+            self.draw_special(cell, maze, 8, corner)
+            return
+        elif cell == maze.grid[maze.end[1]][maze.end[0]]:
+            self.draw_special(cell, maze, 7, corner)
+            return
+
         col = 1
         # Change the color pair to use based on the nature of the cell
         if cell.reserved:
             col = 2
-        elif cell == maze.grid[maze.start[1]][maze.start[0]]:
-            col = 4
-        elif cell == maze.grid[maze.end[1]][maze.end[0]]:
-            col = 5
+
         elif cell.path:
             col = 3
 
+        # Size of cell = 4x2
         draw_x = cell.x * 4
         draw_y = cell.y * 2
-        top = False
-        if cell.x > 0:
-            # Does the top cell have a north wall or not
-            if any(n.x == cell.x - 1
-                   and n.walls['north'] for n in cell.neighbours):
-                top = True
-        self.screen.move(draw_y, draw_x)
+
+        # Build the two rows as strings
+        rows = []
         for i in range(2):
-            # Size of cell = 4x2
+            # Store here, display later at once
+            line = []
+
             if cell.walls['west']:
-                self.add("█", col)
-            # Display the little block top only if
-            # there is a wall on top or the left cell have a top wall
-            elif (i == 0 and not cell.reserved
-                  and (cell.walls['north'] or top)):
-                self.add('▀', col)
+                line.append(("█", col))
+            elif i == 0 and not cell.reserved and corner:
+                # path or not
+                if (cell.path and cell.x > 0
+                        and not maze.grid[cell.y][cell.x - 1].path):
+                    line.append(("▀", 1))
+                else:
+                    line.append(("▀", col))
             else:
-                self.add(" ", col)
+                # path or not
+                if (cell.path and cell.x > 0
+                        and not maze.grid[cell.y][cell.x - 1].path):
+                    line.append((" ", 1))
+                elif cell.path and i == 0:
+                    line.append(("▀", 9))
+                else:
+                    line.append((" ", col))
 
-            if cell.walls['north'] and i == 0:
-                self.add("▀▀▀", col)
-            elif i == 0:
-                self.add("   ", col)
-
-            if i > 0:
-                self.add("   ", col)
+            if i == 0:
+                if cell.walls['north']:
+                    line.append(("▀▀▀", col))
+                else:
+                    # path or not
+                    if (cell.path and cell.y > 0
+                            and not maze.grid[cell.y - 1][cell.x].path):
+                        line.append(("▀▀▀", 9))
+                    else:
+                        line.append(("   ", col))
+            else:
+                line.append(("   ", col))
 
             if cell.x == maze.width - 1:
-                # Border left
-                self.add("█", col)
+                line.append(("█", col))
 
-            draw_y += 1
-            self.screen.move(draw_y, draw_x)
+            rows.append(line)
+
+        # Draw rows at once (no multiple calls)
+        for i, row in enumerate(rows):
+            self.screen.move(draw_y + i, draw_x)
+            for ch, color in row:
+                self.add(ch, color)
+
+        # Border bottom
         if cell.y == maze.height - 1:
-            # Border bottom
-            self.screen.move(draw_y - 1, draw_x)
-            if cell.walls['west']:
-                self.add("█▄▄▄", col)
-            else:
-                self.add("▄▄▄▄", col)
+            self.screen.move(draw_y + 2, draw_x)
+            self.add("▀▀▀▀▀", 6)
+
         if animate:
             self.screen.refresh()
+
+    def draw_special(self, cell: Cell, maze: MazeGenerator, col: int,
+                     corner: bool) -> None:
+        """
+        Handling edge cases with entry exit and path
+
+        cell (Cell): Cell to process
+        maze (MazeGenerator): The maze to access the grid
+        col (int): the color to base on the cell
+        """
+        color: int
+        draw_x = cell.x * 4
+        draw_y = cell.y * 2
+
+        if cell.walls['west']:
+            self.screen.addstr(draw_y, draw_x, "█",
+                               curses.color_pair(1))
+            self.screen.addstr(draw_y + 1, draw_x, "█",
+                               curses.color_pair(1))
+        else:
+            # Is there a path on left or background color
+            color = (3 if cell.x > 0 and maze.grid[cell.y][cell.x - 1].path
+                     else 1)
+            if corner:
+                self.screen.addstr(draw_y, draw_x, "▀",
+                                   curses.color_pair(color))
+            else:
+                self.screen.addstr(draw_y, draw_x, " ",
+                                   curses.color_pair(color))
+            self.screen.addstr(draw_y + 1, draw_x, " ",
+                               curses.color_pair(color))
+
+        if cell.walls['north']:
+            self.screen.addstr(draw_y, draw_x + 1, "▀▀▀",
+                               curses.color_pair(col - 3))
+        else:
+            # Is there a path on top or background color
+            color = (1 if cell.y > 0 and maze.grid[cell.y - 1][cell.x].path
+                     else 0)
+            if color:
+                self.screen.addstr(draw_y, draw_x + 1, "▀▀▀",
+                                   curses.color_pair(col + 3))
+            else:
+                self.screen.addstr(draw_y, draw_x + 1, "▀▀▀",
+                                   curses.color_pair(col))
+
+        # Middle section
+        self.screen.addstr(draw_y + 1, draw_x + 1, "   ",
+                           curses.color_pair(col))
+
+        if cell.x == maze.width - 1:
+            # Border right
+            self.screen.addstr(draw_y, draw_x + 4, "█",
+                               curses.color_pair(1))
+            self.screen.addstr(draw_y + 1, draw_x + 4, "█",
+                               curses.color_pair(1))
+
+        if cell.y == maze.height - 1:
+            # Border bottom
+            self.screen.addstr(draw_y + 2, draw_x, "▀▀▀▀▀",
+                               curses.color_pair(6))

@@ -45,14 +45,10 @@ After you are done with the script you can use:
 To delete all artifacts and the venv
 
 ### If you want to use the project as a package, use:
-``` console
-~$ make build
-```
 
-This command will construct the package for this project in a directory named **dist**\
 install the package using:
 ```console
-~$ pip install package_name.whl
+~$ pip install a_maze_ing-1.0.0.tar.gz
 ```
 You can now access the classes and functions of the project like any built in python library\
 cool isn't it :)

@@ -13,8 +13,8 @@ class ParsingResult(TypedDict, total=False):
     Keys:
         width (int): The width of the maze.
         height (int): The height of the maze.
-        entry (tuple[int, int]): Entry cell coordinate (x, y) .
-        exit (tuple[int, int]): Exit cell coordinate (x, y).
+        entry (list[int, int]): Entry cell coordinate (x, y) .
+        exit (list[int, int]): Exit cell coordinate (x, y).
         output_file (str): File where to store the maze structure.
         perfect (bool): whethere th maze is perfect or not (loop or not).
         seed (int): Optional argument to generate a maze based on a seed.
@@ -161,6 +161,9 @@ def parsing(filename: str) -> ParsingResult:
         raise ParsingError("The exit need to be "
                            "in the range of the maze - 1\n"
                            "Exit out of range")
+    # If exit and entry are equal
+    if dic['entry'] == dic['exit']:
+        raise ParsingError("Entry and Exit shoud be at different coordinate")
 
     # Verify that the width and height let us display the 42 pattern
     if dic['width'] < 9 or dic['height'] < 7:

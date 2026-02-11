@@ -35,11 +35,23 @@ def be_amazed(screen: curses.window, config: ParsingResult) -> None:
         maze.user_option()
         user_input = screen.getch()
 
-        # switch algo
+        # move player (entry)
         if user_input == curses.KEY_UP:
-            maze.switch_algo(-1)
+            maze.move_entry(0, -1)
         elif user_input == curses.KEY_DOWN:
-            maze.switch_algo(1)
+            maze.move_entry(0, 1)
+        elif user_input == curses.KEY_LEFT:
+            maze.move_entry(-1, 0)
+        elif user_input == curses.KEY_RIGHT:
+            maze.move_entry(1, 0)
+
+        # user algo choice
+        elif user_input == ord('1'):
+            maze.algo = 0
+        elif user_input == ord('2'):
+            maze.algo = 1
+        elif user_input == ord('3'):
+            maze.algo = 2
 
         elif user_input == ord('g'):    # static generation
             # clear path
@@ -63,6 +75,10 @@ def be_amazed(screen: curses.window, config: ParsingResult) -> None:
             maze.displayer.display_grid(maze)
 
         elif user_input == ord('p'):    # show/hide path
+            if maze.path_visible is False:
+                maze.path_visible = True
+            else:
+                maze.path_visible = False
             switch_path(maze.path, maze, animate=True)
 
         elif user_input == ord('s'):    # save
@@ -86,6 +102,12 @@ if __name__ == "__main__":
             print("This window is way too small for this size")
         except FileNotFoundError:
             print("No config file, No run!")
+        except PermissionError:
+            print("Can't access the file, permission denied, "
+                  "check permission of:")
+            print("config.txt")
+            print("seed.txt   <-- if generated")
+            print("output.txt <-- if generated")
         except (ParsingError, ValueError) as e:
             print(e)
     else:
