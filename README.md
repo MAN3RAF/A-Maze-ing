@@ -3,7 +3,7 @@
 Mazes are cool :) so with my teammate we made a mazegenerator
 
 
-# Description:
+# Description
 The objective of this project is to generate mazes... ok we'll add a little more \
 What we understood after this project is that maze, can be described as paths.\
 The path that you chose will be the one the user will take. And thankfully\
