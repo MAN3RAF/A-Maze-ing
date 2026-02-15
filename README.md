@@ -93,7 +93,6 @@ Here are some way of using it:
     # More informations in the functions and class documentation
 ```
 
-
 # Resources
 
 Here are some helpful ressources that we used:
